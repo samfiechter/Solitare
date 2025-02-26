@@ -26,8 +26,25 @@
           homeCards : [[],[],[],[]],  //home stacks
           cycle : 0,              //click to rotate
           timer:0,
+          rand:0,
+	  gameover:false,
           init : function(el){
+              var addr=window.location.search.substr(1).split(/&/);
+              var seed=0;
+              addr.forEach(function(vari){
+                  var v = vari.split("=");
+                  if ("seed"==v[0]){
+                      seed = Number(v[1]);
+                  }
+              });
+
+              if(0==seed){
+                  var seed = location.href + "?seed=" + Math.floor(Math.random()*Number.MAX_SAFE_INTEGER);
+                  window.location.href = seed;
+              }
+
               var t = this;
+              t.rand = new Rand(seed);
               t.home = el;
               t.table = $img = $('<img>', {
                   width: 800,
@@ -43,9 +60,7 @@
               t.deck = [];
               for(var s=0; s<4;s++){
                   for(var n=0; n< 13; n++){
-
                       t.deck.push(new Card(s,n,60,100));
-
                   }
               }
               for (var i =0;i<7;i++){
@@ -62,19 +77,19 @@
               var t = this;
               if (t.dj<7){
                   if (t.di==t.dj) {
-                      var card = t.deck.rpop();
+                      var card = t.deck.splice(t.rand.get(t.deck.length),1)[0];
                       card.moveTo( 20 + (100 * t.di),150+(t.dj*3),1);
                       t.tableUpStacks[t.di].push(card);
                       t.dj++;
                       t.di = 6;
                   } else {
-                      var card = t.deck.rpop();
+                      var card = t.deck.splice(t.rand.get(t.deck.length),1)[0];
                       card.moveTo( 20+ (100 * t.di),150+(t.dj*3),0);
                       t.tableDownStacks[t.di].push(card);
                       t.di--;
                   }
               } else {
-                  var card = t.deck.rpop();
+                  var card =  t.deck.splice(t.rand.get(t.deck.length),1)[0];
                   card.moveTo(720,20,0)
                   t.extraDown.push(card);
               }
@@ -83,6 +98,10 @@
               var t = this;
               var cx = evt.offsetX;
               var cy = evt.offsetY;
+
+	      if(t.gameover){
+		  location.href = location.pathname;
+	      }
 
               //click extra cards to cycle
               if (t.extraDown.length && t.extraDown.last().inRect(cx,cy)) {
@@ -285,7 +304,7 @@
               ctx.fillRect(720,20,60,100);  //grey cycle box
               ctx.font =  '20px Courier';
               ctx.fillStyle = "white";
-              ctx.fillText("Cycle",720.5,80)
+              ctx.fillText("Cycle",720.5,75)
               var cw = 60;
               var ch = 100;
               var lists = [].concat([t.deck],t.tableDownStacks,t.tableUpStacks,[t.extraDown,t.extraUp],t.homeCards);
@@ -307,7 +326,9 @@
                   var min = Math.floor(sec / 60);
                   sec = sec - (min*60);
                   ctx.fillText('Time : ' +(min<10?'0':'') +  min + ':' +(sec<10?'0':'')+ sec,20,400);
-
+                  ctx.font =  '60px Courier';
+                  ctx.fillText('Click to play again',20,500);
+		  t.gameover=true;
               }
               t.table.attr('src',canvas[0].toDataURL('image/png'));
           },
@@ -327,7 +348,6 @@
               link.attr('type','image/png');
               link.attr('href',canvas[0].toDataURL('image/png'));
               $('head').append(link);
-
           }
       }
       Array.prototype.last = function(){
@@ -338,9 +358,8 @@
       }
       Array.prototype.rpop = function(){
           if (this.length > 0){
-              var i = Math.floor( Math.random() * this.length);
-              var el = this[i];
-              this.splice(i,1);
+              var i = Math.floor( Math.rand() * this.length);
+              var el = this.splice(i,1)[0];
               return(el);
           }
           return(null);
@@ -370,7 +389,6 @@
                       t.myloc[0][1] += (b[1] - a[1])/ 5;
                       t.myloc[1][2] --;
                   }
-
               }
           },
           moving : function() {
@@ -382,7 +400,6 @@
               t.moveTo(t.myloc[0][0]  ,t.myloc[0][1],1);
               t.moveTo(t.myloc[0][0]-3,t.myloc[0][1],1);
               t.moveTo(t.myloc[0][0]  ,t.myloc[0][1],1);
-
           },
           inRect : function(x,y) {
               var t = this;
@@ -407,28 +424,28 @@
               var y = t.myloc[0][1];
               var w = t.w;
               var h = t.h;
-              var fw =  Math.floor(w/10);
-              var fh =  fw * 0.6;
+              var fw =  Math.floor(w/7);
+              var fh =  Math.floor(fw / 0.5);
               ctx.fillStyle = "white";
               ctx.fillRect(x,y,w,h);
               ctx.strokeStyle = "black";
               ctx.strokeRect(x,y,w,h);
 
               if (1 == t.faceup) {
-                  ctx.font =  (2*fw) + 'px Courier';
+                  ctx.font =  (fh) + 'px Courier';
                   ctx.fillStyle = (t.s == 0 || t.s == 2 ? 'red' : 'black');
-                  ctx.fillText(t.numbers[t.n],x+5,y+(4*fh));
-                  ctx.font =  (3*fw) + 'px Courier';
+                  ctx.fillText(t.numbers[t.n],x+(w/20),y+fh);
+                  ctx.font =  (fh) + 'px Courier';
                   if (t.n == 0 || t.n > 9 ) {
-                      ctx.fillText(t.suits[t.s],x+5,y+(8*fh));
-                      ctx.font =  Math.floor(w-(3*fw)) + 'px Courier';
-                      ctx.fillText(t.numbers[t.n],x + (2*fw),y + (h*0.6));
+                      ctx.fillText(t.suits[t.s],x+(w/20),y+2*fh);
+                      ctx.font =  Math.floor(w) + 'px Courier';
+                      ctx.fillText(t.numbers[t.n],x + (w-(4.5*fw))/2,y + (h*0.7));
                   } else {
-                      spots = [[2,1],[5,2],[8,1],  // 0,1,2
-                               [2,3],[5,4],[8,3],  // 3,4,5
+                      spots = [[2,1],[5,1],[8,1],  // 0,1,2
+                               [2,3.5],[5,2.25],[8,3.5],  // 3,4,5
                                [2,5],[5,5],[8,5],  // 6,7,8
-                               [2,7],[5,6],[8,7],  // 9,10,11
-                               [2,9],[5,8],[8,9]]  // 12,13,14
+                               [2,6.5],[5,7.75],[8,6.5],  // 9,10,11
+                               [2,9],[5,9],[8,9]]  // 12,13,14
                       spno = [[0,14], //2
                               [0,7,14],
                               [0,2,12,14], //4
@@ -442,14 +459,13 @@
                       ctx.font =  (3*fw) + 'px Courier';
                       for(var j=0; j< a.length; j++){
                           var spot = spots[a[j]];
-                          xa = x  + fw + ((spot[0] * w)/15);
-                          ya  = y +5*fh + ((spot[1] * h)/12);
+                          xa = x  + (spot[0] * w/12);
+                          ya  = y + (h*0.27) + (spot[1] * h/13);
                           ctx.fillText(t.suits[t.s],xa,ya);
                       }
 
                   }
               } else {
-
                   ctx.strokeStyle= 'blue';
                   var stepx = w / 20;
                   var stepy = h / 20;
@@ -470,6 +486,21 @@
               }
           }
       }
+
+      function Rand(seed){
+          this.seed = seed;
+      }
+      Rand.prototype = {
+          seed:0,
+          get(max){
+              var t = this;
+              var mul = 13267849;
+              var add = 456456437;
+              t.seed = (add + (t.seed * mul)) % add;
+              return(t.seed % max);
+          }
+      }
+
       </script>
   </body>
 </html>
